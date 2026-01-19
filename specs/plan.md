@@ -1,64 +1,67 @@
 # issue2md 技术实现方案
 
-**Version**: 1.0
-**Status**: Ready for Implementation
-**Author**: AI Architect Agent
-**Date**: 2024-01-19
+**版本**: 1.0
+**状态**: 准备实施
+**基于**: specs/spec.md v1.0
 
 ---
 
 ## 1. 技术上下文总结
 
-### 1.1 技术栈选型
+### 1.1 核心技术栈
 
-| 组件 | 技术选型 | 理由 |
-|------|---------|------|
-| **语言** | Go 1.18+ | 项目宪法明确要求，高性能、并发友好 |
-| **Web框架** | `net/http` (标准库) | 遵循"简单性原则"，不引入Gin/Echo等外部框架 |
-| **GitHub API** | `google/go-github` v65+ | 官方维护，支持GraphQL v4 API |
-| **GraphQL** | 内嵌查询字符串 | 避免引入额外GraphQL库，保持简单 |
-| **Markdown输出** | 标准库 `fmt` + `strings` | 不使用第三方模板引擎 |
-| **数据存储** | 无（实时API获取） | MVP阶段无需持久化 |
-| **测试框架** | `testing` (标准库) | 表格驱动测试，拒绝Mock |
+- **语言**: Go (版本 >= 1.18.0，当前项目配置为 1.18.1)
+- **Web框架**: 仅使用标准库 `net/http`，严格遵循"简单性原则"
+- **GitHub API客户端**: 使用 `google/go-github` 库，结合 GraphQL API v4
+- **Markdown处理**: 不使用第三方库，直接使用 `fmt` 和字符串处理
+- **构建工具**: 使用 `Makefile` 进行标准化操作
+- **测试方法**: 表格驱动测试（Table-Driven Tests）优先
 
-### 1.2 外部依赖
+### 1.2 项目外部依赖
 
 ```go
-// go.mod 最终依赖列表
-module github.com/bigwhite/issue2md
-
-go 1.18
-
+// go.mod 将添加以下依赖
 require (
     github.com/google/go-github v65.0.0
-    golang.org/x/oauth2 v0.15.0 // 仅用于GitHub认证
+    golang.org/x/oauth2 v0.15.0  // GitHub认证
 )
 ```
+
+### 1.3 架构设计原则
+
+- **简单性**: 避免过度抽象，使用Go标准库
+- **内聚性**: 每个内部包职责单一明确
+- **可测试性**: 所有组件都支持单元测试和集成测试
+- **错误处理**: 严格遵循错误包装原则
 
 ---
 
 ## 2. "合宪性"审查
 
-### 2.1 对照宪法条款逐条审查
+### 2.1 符合性检查表
 
-| 宪法条款 | 审查结果 | 说明 |
-|---------|---------|------|
-| **1.1 YAGNI** | ✅ 合规 | 仅实现spec.md明确要求的功能，无超前设计 |
-| **1.2 标准库优先** | ✅ 合规 | Web层使用`net/http`，Markdown输出使用`fmt`/`strings` |
-| **1.3 反过度工程** | ✅ 合规 | 无接口抽象，直接使用结构体，无设计模式 |
-| **2.1 TDD循环** | ✅ 合规 | 每个模块开发前先写失败的表格驱动测试 |
-| **2.2 表格驱动测试** | ✅ 合规 | 所有单元测试采用`[]struct{...}{...}`模式 |
-| **2.3 拒绝Mocks** | ✅ 合规 | 优先集成测试，使用真实GitHub API（或testcontainers） |
-| **3.1 错误处理** | ✅ 合规 | 所有错误显式处理，使用`fmt.Errorf("...: %w", err)`包装 |
-| **3.2 无全局变量** | ✅ 合规 | 所有依赖通过构造函数/参数显式注入 |
+| 宪法条款 | 符合性 | 具体体现 |
+|---------|--------|----------|
+| **第一条：简单性原则** | ✅ 完全符合 | 仅使用标准库`net/http`，最小化外部依赖，避免过度抽象 |
+| **第二条：测试先行铁律** | ✅ 完全符合 | 采用TDD方法，优先表格驱动测试，避免mocks |
+| **第三条：明确性原则** | ✅ 完全符合 | 显式错误处理，无全局变量，依赖注入 |
 
-### 2.2 违规风险评估
+### 2.2 具体合规措施
 
-| 风险点 | 评估 | 缓解措施 |
-|-------|------|---------|
-| GitHub API限流 | 低 | 支持`GITHUB_TOKEN`环境变量，实现重试逻辑 |
-| 私有仓库访问 | 低 | 通过Token认证，错误信息明确提示 |
-| GraphQL查询复杂度 | 中 | 预定义查询字符串，静态验证 |
+#### 2.2.1 简单性原则实施
+- **YAGNI**: 仅实现spec.md要求的功能，不预置扩展性
+- **标准库优先**: Web服务使用`net/http`，JSON处理使用`encoding/json`
+- **反过度工程**: 使用具体函数而非复杂接口体系
+
+#### 2.2.2 测试先行实施
+- **TDD循环**: 每个功能从失败测试开始
+- **表格驱动**: 所有单元测试使用`[]struct`模式
+- **集成测试优先**: 使用真实GitHub API进行测试
+
+#### 2.2.3 明确性原则实施
+- **错误处理**: 严格使用`fmt.Errorf("context: %w", err)`
+- **依赖注入**: 通过构造函数传递所有依赖
+- **配置管理**: 通过环境变量显式配置，无隐藏全局状态
 
 ---
 
@@ -70,228 +73,236 @@ require (
 issue2md/
 ├── cmd/
 │   └── issue2md/
-│       └── main.go              # 入口点，调用cli.Run()
-│
+│       └── main.go                 # 应用入口点
 ├── internal/
-│   ├── parser/                  # URL解析与类型识别
-│   │   ├── parser.go            # ParseURL(), ResourceType定义
-│   │   └── parser_test.go       # 表格驱动测试
-│   │
-│   ├── github/                  # GitHub API交互
-│   │   ├── client.go            # Client结构体，FetchIssueData()
-│   │   ├── graphql.go           # GraphQL查询字符串
-│   │   ├── types.go             # IssueData, Comment, User等
-│   │   └── client_test.go       # 集成测试
-│   │
-│   ├── converter/               # 数据转换为Markdown
-│   │   ├── converter.go         # Convert(), WriteFile()
-│   │   ├── frontmatter.go       # YAML frontmatter生成
-│   │   └── converter_test.go    # 表格驱动测试
-│   │
-│   ├── config/                  # 配置管理
-│   │   ├── config.go            # Config结构体，LoadConfig()
-│   │   └── config_test.go       # 表格驱动测试
-│   │
-│   └── cli/                     # 命令行接口
-│       ├── cli.go               # Run(), Execute()
-│       ├── flags.go             # Flag解析
-│       └── cli_test.go          # 表格驱动测试
-│
-├── test/
-│   └── fixtures/                # 测试固件
-│       ├── issue_response.json  # GitHub API响应示例
-│       └── expected_output.md   # 预期Markdown输出
-│
-├── specs/
-│   ├── spec.md                  # 功能规格（已存在）
-│   ├── plan.md                  # 本文档
-│   └── api-sketch.md            # API草案（已存在）
-│
-├── constitution.md              # 项目宪法（已存在）
-├── CLAUDE.md                    # AI协作指南（已存在）
+│   ├── cli/                        # 命令行接口处理
+│   │   ├── app.go                  # CLI应用主逻辑
+│   │   ├── args.go                 # 命令行参数解析
+│   │   └── version.go              # 版本信息管理
+│   ├── config/                     # 配置管理
+│   │   ├── config.go               # 配置接口和实现
+│   │   └── env.go                  # 环境变量处理
+│   ├── converter/                  # Markdown转换核心
+│   │   ├── converter.go            # 转换器接口和实现
+│   │   ├── frontmatter.go          # YAML frontmatter生成
+│   │   ├── formatter.go            # 内容格式化
+│   │   └── templates.go            # Markdown模板定义
+│   ├── github/                     # GitHub API交互
+│   │   ├── client.go               # GitHub客户端实现
+│   │   ├── types.go                # GitHub数据结构定义
+│   │   ├── queries.go              # GraphQL查询构建
+│   │   └── auth.go                 # 认证处理
+│   └── parser/                     # URL解析与识别
+│       ├── parser.go               # URL解析器实现
+│       ├── types.go                # 解析相关类型定义
+│       └── validation.go           # URL验证逻辑
+├── pkg/                            # (可选) 公共包
 ├── go.mod
 ├── go.sum
-├── Makefile                     # 标准化操作
-└── README.md
+├── Makefile                        # 构建脚本
+├── README.md
+├── LICENSE
+└── specs/
+    └── 001-core-functionality/
+        ├── spec.md                 # 功能规格
+        └── plan.md                 # 本技术方案
 ```
 
-### 3.2 包依赖关系
+### 3.2 包职责与依赖关系
+
+#### 3.2.1 包职责矩阵
+
+| 包名 | 主要职责 | 输入 | 输出 |
+|------|----------|------|------|
+| **parser** | GitHub URL解析和类型识别 | Raw URL字符串 | ResourceURL结构 |
+| **github** | GitHub API数据获取 | ResourceURL, 认证Token | Issue/PR/Discussion结构 |
+| **converter** | 数据到Markdown转换 | GitHub资源数据, 转换选项 | Markdown字节流 |
+| **config** | 应用配置管理 | 环境变量, 启动参数 | Config接口实现 |
+| **cli** | 命令行接口和应用流程 | 命令行参数, stdin | CLI执行结果 |
+
+#### 3.2.2 依赖关系图
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      cmd/issue2md                       │
-│                        main.go                          │
-└───────────────────────────┬─────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│                      internal/cli                       │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │  Run() ──► config.LoadConfig()                  │   │
-│  │          ──► parser.ParseURL()                   │   │
-│  │          ──► github.NewClient()                  │   │
-│  │          ──► client.FetchIssueData()             │   │
-│  │          ──► converter.Convert()                 │   │
-│  │          ──► converter.WriteFile()               │   │
-│  └─────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
-                            │
-        ┌───────────────────┼───────────────────┐
-        ▼                   ▼                   ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│internal/     │   │internal/     │   │internal/     │
-│  parser      │   │  github      │   │  converter   │
-│              │   │              │   │              │
-│ ParseURL()   │   │ NewClient()  │   │ Convert()    │
-│ ParseResult  │   │ FetchIssue() │   │ WriteFile()  │
-└──────────────┘   └──────────────┘   └──────────────┘
-                            ▲
-                            │
-                    ┌──────────────┐
-                    │internal/     │
-                    │  config      │
-                    │              │
-                    │ LoadConfig() │
-                    └──────────────┘
+cmd/issue2md/main.go
+    ↓
+internal/cli/
+    ↓ ↓ ↓
+internal/config/  internal/parser/  internal/converter/
+                                    ↓
+                              internal/github/
 ```
 
-### 3.3 包职责详解
+**依赖规则**:
+- `cmd/` 仅依赖 `internal/cli`
+- `cli/` 可依赖 `config/`, `parser/`, `converter/`
+- `converter/` 仅依赖 `github/`
+- `parser/` 和 `config/` 独立，不依赖其他内部包
+- 所有包都可以依赖Go标准库
 
-| 包名 | 职责 | 依赖 |
-|------|------|------|
-| `parser` | URL解析、类型识别、验证 | 无 |
-| `github` | GraphQL API调用、数据获取 | `parser`, `config` |
-| `converter` | Markdown格式化、YAML生成 | `github` (IssueData) |
-| `config` | 环境变量读取、配置结构 | 无 |
-| `cli` | 命令行解析、流程编排 | 以上所有包 |
+### 3.3 模块间通信接口
+
+```go
+// 统一错误类型
+var (
+    ErrInvalidURL     = errors.New("invalid GitHub URL")
+    ErrUnsupportedURL = errors.New("unsupported URL type")
+    ErrAPIError       = errors.New("GitHub API error")
+    ErrAuthRequired   = errors.New("authentication required")
+)
+
+// 核心数据传递格式
+type ResourceData struct {
+    Type string // "issue", "pr", "discussion"
+    Data interface{} // *Issue, *PullRequest, 或 *Discussion
+}
+```
 
 ---
 
 ## 4. 核心数据结构
 
-### 4.1 跨包数据流
-
-```
-ParseResult ──► IssueData ──► Markdown
-   (parser)      (github)      (converter)
-```
-
-### 4.2 完整数据结构定义
+### 4.1 统一资源表示
 
 ```go
-// ============================================================================
-// internal/parser/types.go
-// ============================================================================
-
-// ResourceType 表示 GitHub 资源类型
-type ResourceType int
-
-const (
-    TypeUnknown ResourceType = iota
-    TypeIssue
-    TypePullRequest
-    TypeDiscussion
-)
-
-func (t ResourceType) String() string {
-    switch t {
-    case TypeIssue:
-        return "issue"
-    case TypePullRequest:
-        return "pr"
-    case TypeDiscussion:
-        return "discussion"
-    default:
-        return "unknown"
-    }
+// Resource 表示所有GitHub资源的通用字段
+type Resource struct {
+    Title       string    `json:"title"`
+    URL         string    `json:"url"`
+    Number      int       `json:"number"`
+    Author      User      `json:"author"`
+    CreatedAt   time.Time `json:"created_at"`
+    UpdatedAt   time.Time `json:"updated_at"`
+    Status      string    `json:"status"`      // "open", "closed", "merged"
+    Body        string    `json:"body"`
+    Reactions   Reactions `json:"reactions"`
+    Comments    []Comment `json:"comments"`
 }
 
-// ParseResult 表示 URL 解析结果
-type ParseResult struct {
-    Type   ResourceType
+// User 表示GitHub用户信息
+type User struct {
+    Login     string `json:"login"`
+    AvatarURL string `json:"avatar_url"`
+    HTMLURL   string `json:"html_url"`
+}
+
+// Comment 表示评论内容
+type Comment struct {
+    ID        int64     `json:"id"`
+    Author    User      `json:"author"`
+    Body      string    `json:"body"`
+    CreatedAt time.Time `json:"created_at"`
+    UpdatedAt time.Time `json:"updated_at"`
+    Reactions Reactions `json:"reactions"`
+    IsAnswer  bool      `json:"is_answer"` // 仅用于Discussion
+}
+
+// Reactions 表示reaction统计
+type Reactions struct {
+    ThumbsUp   int `json:"thumbs_up"`
+    ThumbsDown int `json:"thumbs_down"`
+    Laugh      int `json:"laugh"`
+    Hooray     int `json:"hooray"`
+    Confused   int `json:"confused"`
+    Heart      int `json:"heart"`
+    Rocket     int `json:"rocket"`
+    Eyes       int `json:"eyes"`
+}
+```
+
+### 4.2 特定资源类型
+
+```go
+// Issue 表示GitHub Issue
+type Issue struct {
+    Resource
+    Labels    []Label    `json:"labels"`
+    Milestone *Milestone `json:"milestone,omitempty"`
+}
+
+// PullRequest 表示GitHub Pull Request
+type PullRequest struct {
+    Resource
+    BaseBranch     string `json:"base_branch"`
+    HeadBranch     string `json:"head_branch"`
+    MergeCommitSHA string `json:"merge_commit_sha,omitempty"`
+}
+
+// Discussion 表示GitHub Discussion
+type Discussion struct {
+    Resource
+    Category    DiscussionCategory `json:"category"`
+    Answer      *Comment           `json:"answer,omitempty"`
+}
+
+// Label 表示GitHub标签
+type Label struct {
+    Name  string `json:"name"`
+    Color string `json:"color"`
+}
+
+// Milestone 表示GitHub里程碑
+type Milestone struct {
+    Title string `json:"title"`
+    State string `json:"state"`
+}
+
+// DiscussionCategory 表示Discussion分类
+type DiscussionCategory struct {
+    ID   int64  `json:"id"`
+    Name string `json:"name"`
+    Emoji string `json:"emoji"`
+}
+```
+
+### 4.3 配置和选项结构
+
+```go
+// Config 表示应用配置
+type Config struct {
+    GitHubToken string
+    UserAgent   string
+    APITimeout  time.Duration
+}
+
+// ConvertOptions 表示Markdown转换选项
+type ConvertOptions struct {
+    EnableReactions bool // 是否包含reactions统计
+    EnableUserLinks bool // 是否将@username转换为链接
+}
+
+// CLIArgs 表示命令行参数
+type CLIArgs struct {
+    URL             string
+    OutputFile      string
+    EnableReactions bool
+    EnableUserLinks bool
+    ShowHelp        bool
+    ShowVersion     bool
+}
+```
+
+### 4.4 URL解析结构
+
+```go
+// ResourceURL 表示解析后的GitHub资源URL
+type ResourceURL struct {
+    Type   string // "issue", "pull", "discussion"
     Owner  string
     Repo   string
     Number int
     URL    string // 原始URL
 }
 
-// ============================================================================
-// internal/github/types.go
-// ============================================================================
-
-// User 表示 GitHub 用户信息
-type User struct {
-    Login     string
-    AvatarURL string
-    URL       string // GitHub 主页链接
+// URLPattern 支持的URL模式定义
+type URLPattern struct {
+    Pattern string
+    Type    string
 }
 
-// ReactionCounts 表示 reactions 统计
-type ReactionCounts struct {
-    ThumbsUp   int `json:"THUMBS_UP"`
-    ThumbsDown int `json:"THUMBS_DOWN"`
-    Laugh      int `json:"LAUGH"`
-    Hooray     int `json:"HOORAY"`
-    Confused   int `json:"CONFUSED"`
-    Heart      int `json:"HEART"`
-    Rocket     int `json:"ROCKET"`
-    Eyes       int `json:"EYES"`
-}
-
-// IsEmpty 判断是否有任何reaction
-func (r *ReactionCounts) IsEmpty() bool {
-    return r.ThumbsUp == 0 && r.ThumbsDown == 0 &&
-        r.Laugh == 0 && r.Hooray == 0 &&
-        r.Confused == 0 && r.Heart == 0 &&
-        r.Rocket == 0 && r.Eyes == 0
-}
-
-// Comment 表示一条评论
-type Comment struct {
-    Author    *User
-    Body      string
-    CreatedAt time.Time
-    UpdatedAt time.Time
-    Reactions *ReactionCounts
-    IsAnswer  bool // 仅 Discussion 使用：标记为答案
-}
-
-// IssueData 表示 Issue/PR/Discussion 的完整数据
-// 这是跨包传递的核心数据结构
-type IssueData struct {
-    Type         ResourceType
-    Title        string
-    URL          string
-    Author       *User
-    CreatedAt    time.Time
-    UpdatedAt    time.Time
-    Status       string // "open", "closed", "merged", "answered"
-    Body         string
-    Comments     []*Comment
-    Reactions    *ReactionCounts
-    TotalCommentCount int // 包括评论和review评论总数
-}
-
-// ============================================================================
-// internal/converter/types.go
-// ============================================================================
-
-// Options 控制输出选项
-type Options struct {
-    EnableReactions bool // 包含 reactions 统计
-    EnableUserLinks bool // @username 转换为链接
-}
-
-// ============================================================================
-// internal/config/types.go
-// ============================================================================
-
-// Config 表示应用配置
-type Config struct {
-    GitHubToken     string
-    EnableReactions bool
-    EnableUserLinks bool
-    OutputFile      string // 空字符串表示 stdout
+var SupportedPatterns = []URLPattern{
+    {`^https://github\.com/([^/]+)/([^/]+)/issues/(\d+)$`, "issue"},
+    {`^https://github\.com/([^/]+)/([^/]+)/pull/(\d+)$`, "pull"},
+    {`^https://github\.com/([^/]+)/([^/]+)/discussions/(\d+)$`, "discussion"},
 }
 ```
 
@@ -299,497 +310,253 @@ type Config struct {
 
 ## 5. 接口设计
 
-### 5.1 `internal/parser` 接口
+### 5.1 GitHub API客户端接口
 
 ```go
-// ParseURL 解析 GitHub URL 并返回资源信息
-//
-// 参数:
-//   - urlStr: 待解析的URL字符串
-//
-// 返回:
-//   - *ParseResult: 解析结果，包含类型、仓库信息、编号
-//   - error: 当URL格式无效或不支持的类型时返回错误
-//
-// 支持的URL格式:
-//   - https://github.com/{owner}/{repo}/issues/{number}
-//   - https://github.com/{owner}/{repo}/pull/{number}
-//   - https://github.com/{owner}/{repo}/discussions/{number}
-//
-// 示例:
-//   result, err := parser.ParseURL("https://github.com/golang/go/issues/12345")
-func ParseURL(urlStr string) (*ParseResult, error)
+// GitHubClient 定义GitHub API交互接口
+type GitHubClient interface {
+    // GetIssue 获取Issue完整信息
+    GetIssue(ctx context.Context, owner, repo string, number int) (*Issue, error)
 
-// Validate 验证 ParseResult 是否有效
-func (r *ParseResult) Validate() error
-```
+    // GetPullRequest 获取PR完整信息
+    GetPullRequest(ctx context.Context, owner, repo string, number int) (*PullRequest, error)
 
-### 5.2 `internal/github` 接口
+    // GetDiscussion 获取Discussion完整信息
+    GetDiscussion(ctx context.Context, owner, repo string, number int) (*Discussion, error)
+}
 
-```go
-// NewClient 创建新的 GitHub API 客户端
-//
-// 参数:
-//   - token: GitHub Personal Access Token，空字符串时使用匿名访问
-//
-// 注意:
-//   - 匿名访问有严格的API限流
-//   - 推荐通过 GITHUB_TOKEN 环境变量设置
-func NewClient(token string) *Client
-
-// FetchIssueData 获取指定 Issue/PR/Discussion 的完整数据
-//
-// 参数:
-//   - ctx: 上下文，用于超时控制
-//   - result: ParseResult，包含资源类型和位置信息
-//
-// 返回:
-//   - *IssueData: 完整的数据，包括标题、作者、评论等
-//   - error: API错误、网络错误、数据解析错误
-//
-// 根据 ParseResult.Type 自动选择对应的 GraphQL 查询:
-//   - TypeIssue: 使用 issueQuery
-//   - TypePullRequest: 使用 pullRequestQuery
-//   - TypeDiscussion: 使用 discussionQuery
-func (c *Client) FetchIssueData(ctx context.Context, result *ParseResult) (*IssueData, error)
-```
-
-### 5.3 `internal/converter` 接口
-
-```go
-// Convert 将 IssueData 转换为 Markdown 格式
-//
-// 参数:
-//   - data: 从 GitHub API 获取的完整数据
-//   - opts: 输出选项控制
-//
-// 返回:
-//   - string: 完整的 Markdown 字符串，包含 YAML frontmatter 和正文
-//   - error: 模板渲染错误（理论上不应发生）
-//
-// 输出格式:
-//   1. YAML frontmatter (元数据)
-//   2. 标题行（包含状态）
-//   3. 元信息表格（作者、时间、状态等）
-//   4. Description (原始body)
-//   5. Comments (按时间排序)
-func Convert(data *github.IssueData, opts *Options) (string, error)
-
-// WriteFile 将 Markdown 写入文件或 stdout
-//
-// 参数:
-//   - markdown: Markdown 内容
-//   - path: 文件路径，空字符串表示写入 stdout
-//
-// 返回:
-//   - error: 文件写入失败时返回错误
-func WriteFile(markdown, path string) error
-```
-
-### 5.4 `internal/config` 接口
-
-```go
-// LoadConfig 从环境变量和命令行参数加载配置
-//
-// 环境变量:
-//   - GITHUB_TOKEN: GitHub Personal Access Token (可选)
-//
-// 命令行参数由 cli 包解析后传入
-func LoadConfig() *Config
-
-// MergeFlags 从命令行参数更新配置
-func (c *Config) MergeFlags(enableReactions, enableUserLinks bool, outputFile string)
-```
-
-### 5.5 `internal/cli` 接口
-
-```go
-// Run 执行 CLI 主逻辑
-//
-// 参数:
-//   - args: 命令行参数（不含程序名）
-//
-// 返回:
-//   - int: 进程退出码 (0=成功, 1=错误)
-//
-// 命令格式:
-//   issue2md [flags] <url> [output_file]
-//
-// Flags:
-//   -enable-reactions    # 包含 reactions 统计
-//   -enable-user-links   # 用户名渲染为链接
-//   -h, -help            # 显示帮助
-//   -v, -version         # 显示版本
-func Run(args []string) int
-
-// Execute 是实际的执行函数，便于测试
-func Execute(cfg *config.Config, args []string) error
-```
-
----
-
-## 6. GraphQL查询设计
-
-### 6.1 Issue 查询
-
-```graphql
-query GetIssue($owner: String!, $repo: String!, $number: Int!) {
-    repository(owner: $owner, name: $repo) {
-        issue(number: $number) {
-            title
-            url
-            state
-            createdAt
-            updatedAt
-            bodyText
-            author {
-                login
-                avatarUrl
-                url
-            }
-            reactions(first: 100) {
-                thumbsUp: reactionCount(content: THUMBS_UP)
-                thumbsDown: reactionCount(content: THUMBS_DOWN)
-                laugh: reactionCount(content: LAUGH)
-                hooray: reactionCount(content: HOORAY)
-                confused: reactionCount(content: CONFUSED)
-                heart: reactionCount(content: HEART)
-                rocket: reactionCount(content: ROCKET)
-                eyes: reactionCount(content: EYES)
-            }
-            comments(first: 100) {
-                totalCount
-                nodes {
-                    author { login avatarUrl url }
-                    bodyText
-                    createdAt
-                    updatedAt
-                    reactions(first: 100) {
-                        thumbsUp: reactionCount(content: THUMBS_UP)
-                        thumbsDown: reactionCount(content: THUMBS_DOWN)
-                        laugh: reactionCount(content: LAUGH)
-                        hooray: reactionCount(content: HOORAY)
-                        confused: reactionCount(content: CONFUSED)
-                        heart: reactionCount(content: HEART)
-                        rocket: reactionCount(content: ROCKET)
-                        eyes: reactionCount(content: EYES)
-                    }
-                }
-            }
-        }
-    }
+// GitHubClientBuilder 客户端构建器
+type GitHubClientBuilder interface {
+    WithToken(token string) GitHubClientBuilder
+    WithHTTPClient(client *http.Client) GitHubClientBuilder
+    WithTimeout(timeout time.Duration) GitHubClientBuilder
+    Build() (GitHubClient, error)
 }
 ```
 
-### 6.2 PullRequest 查询
+### 5.2 URL解析器接口
 
-```graphql
-query GetPullRequest($owner: String!, $repo: String!, $number: Int!) {
-    repository(owner: $owner, name: $repo) {
-        pullRequest(number: $number) {
-            title
-            url
-            state
-            merged
-            createdAt
-            updatedAt
-            bodyText
-            author {
-                login
-                avatarUrl
-                url
-            }
-            reactions(first: 100) {
-                thumbsUp: reactionCount(content: THUMBS_UP)
-                thumbsDown: reactionCount(content: THUMBS_DOWN)
-                laugh: reactionCount(content: LAUGH)
-                hooray: reactionCount(content: HOORAY)
-                confused: reactionCount(content: CONFUSED)
-                heart: reactionCount(content: HEART)
-                rocket: reactionCount(content: ROCKET)
-                eyes: reactionCount(content: EYES)
-            }
-            comments(first: 100) {
-                totalCount
-                nodes {
-                    author { login avatarUrl url }
-                    bodyText
-                    createdAt
-                    updatedAt
-                    reactions(first: 100) {
-                        thumbsUp: reactionCount(content: THUMBS_UP)
-                        thumbsDown: reactionCount(content: THUMBS_DOWN)
-                        laugh: reactionCount(content: LAUGH)
-                        hooray: reactionCount(content: HOORAY)
-                        confused: reactionCount(content: CONFUSED)
-                        heart: reactionCount(content: HEART)
-                        rocket: reactionCount(content: ROCKET)
-                        eyes: reactionCount(content: EYES)
-                    }
-                }
-            }
-            reviews(first: 100) {
-                totalCount
-                nodes {
-                    author { login avatarUrl url }
-                    bodyText
-                    createdAt
-                    updatedAt
-                    state
-                    comments(first: 100) {
-                        nodes {
-                            author { login avatarUrl url }
-                            bodyText
-                            createdAt
-                            updatedAt
-                        }
-                    }
-                }
-            }
-        }
-    }
+```go
+// Parser 定义URL解析接口
+type Parser interface {
+    // Parse 解析GitHub URL
+    Parse(rawURL string) (*ResourceURL, error)
+
+    // Validate 验证URL格式
+    Validate(rawURL string) error
+
+    // SupportedTypes 返回支持的资源类型
+    SupportedTypes() []string
 }
 ```
 
-### 6.3 Discussion 查询
+### 5.3 Markdown转换器接口
 
-```graphql
-query GetDiscussion($owner: String!, $repo: String!, $number: Int!) {
-    repository(owner: $owner, name: $repo) {
-        discussion(number: $number) {
-            title
-            url
-            state
-            isAnswered
-            createdAt
-            updatedAt
-            bodyText
-            author {
-                login
-                avatarUrl
-                url
-            }
-            reactions(first: 100) {
-                thumbsUp: reactionCount(content: THUMBS_UP)
-                thumbsDown: reactionCount(content: THUMBS_DOWN)
-                laugh: reactionCount(content: LAUGH)
-                hooray: reactionCount(content: HOORAY)
-                confused: reactionCount(content: CONFUSED)
-                heart: reactionCount(content: HEART)
-                rocket: reactionCount(content: ROCKET)
-                eyes: reactionCount(content: EYES)
-            }
-            comments(first: 100) {
-                totalCount
-                nodes {
-                    author { login avatarUrl url }
-                    bodyText
-                    createdAt
-                    updatedAt
-                    isAnswer
-                    reactions(first: 100) {
-                        thumbsUp: reactionCount(content: THUMBS_UP)
-                        thumbsDown: reactionCount(content: THUMBS_DOWN)
-                        laugh: reactionCount(content: LAUGH)
-                        hooray: reactionCount(content: HOORAY)
-                        confused: reactionCount(content: CONFUSED)
-                        heart: reactionCount(content: HEART)
-                        rocket: reactionCount(content: ROCKET)
-                        eyes: reactionCount(content: EYES)
-                    }
-                }
-            }
-        }
-    }
+```go
+// Converter 定义Markdown转换接口
+type Converter interface {
+    // Convert 将GitHub资源转换为Markdown
+    Convert(ctx context.Context, resource interface{}, options *ConvertOptions) ([]byte, error)
+
+    // ConvertIssue 转换Issue
+    ConvertIssue(ctx context.Context, issue *Issue, options *ConvertOptions) ([]byte, error)
+
+    // ConvertPullRequest 转换PR
+    ConvertPullRequest(ctx context.Context, pr *PullRequest, options *ConvertOptions) ([]byte, error)
+
+    // ConvertDiscussion 转换Discussion
+    ConvertDiscussion(ctx context.Context, discussion *Discussion, options *ConvertOptions) ([]byte, error)
+}
+
+// FrontmatterGenerator YAML frontmatter生成器接口
+type FrontmatterGenerator interface {
+    Generate(resource interface{}) (map[string]interface{}, error)
+    ToYAML(data map[string]interface{}) ([]byte, error)
+}
+```
+
+### 5.4 配置管理接口
+
+```go
+// Config 定义配置接口
+type Config interface {
+    GitHubToken() string
+    UserAgent() string
+    APITimeout() time.Duration
+    HTTPClient() *http.Client
+}
+
+// ConfigLoader 配置加载器接口
+type ConfigLoader interface {
+    LoadFromEnv() Config
+    LoadWithToken(token string) Config
+    Validate() error
+}
+```
+
+### 5.5 CLI应用接口
+
+```go
+// CLIApp 定义CLI应用接口
+type CLIApp interface {
+    Run(ctx context.Context, args []string) error
+    Execute(ctx context.Context, parsedArgs *CLIArgs) error
+}
+
+// ArgParser 命令行参数解析器接口
+type ArgParser interface {
+    Parse(args []string) (*CLIArgs, error)
+    Validate(args *CLIArgs) error
+    ShowUsage() error
+    ShowVersion() error
+}
+```
+
+### 5.6 文件输出接口
+
+```go
+// OutputHandler 输出处理器接口
+type OutputHandler interface {
+    WriteToFile(data []byte, filename string) error
+    WriteToStdout(data []byte) error
+    EnsureDirectory(filename string) error
 }
 ```
 
 ---
 
-## 7. 错误处理策略
+## 6. 实施计划与优先级
 
-### 7.1 错误类型定义
+### 6.1 开发阶段划分
 
-```go
-// internal/errors/errors.go
-package errors
+#### 阶段1：基础设施 (第1-2周)
+1. **parser包** - URL解析和验证 (无外部依赖，易测试)
+2. **config包** - 配置管理 (环境变量处理)
+3. **核心数据结构** - 定义所有struct和接口
 
-import (
-    "errors"
-    "fmt"
-)
+#### 阶段2：数据获取 (第3-4周)
+1. **github包** - GitHub API客户端实现
+2. **认证处理** - Token管理和请求认证
+3. **错误处理** - 统一错误类型和处理
 
-var (
-    // Parser 错误
-    ErrInvalidURL    = errors.New("invalid GitHub URL format")
-    ErrUnsupportedType = errors.New("unsupported resource type")
+#### 阶段3：数据处理 (第5-6周)
+1. **converter包** - Markdown转换核心逻辑
+2. **模板实现** - YAML frontmatter和内容格式化
+3. **选项处理** - reactions和用户链接功能
 
-    // GitHub 错误
-    ErrResourceNotFound = errors.New("resource not found")
-    ErrAuthenticationFailed = errors.New("authentication failed")
-    ErrRateLimitExceeded = errors.New("rate limit exceeded")
-    ErrNetworkError = errors.New("network error")
+#### 阶段4：用户接口 (第7周)
+1. **cli包** - 命令行参数解析和应用流程
+2. **输出处理** - 文件和标准输出
+3. **帮助和版本信息**
 
-    // Converter 错误
-    ErrEmptyData = errors.New("empty issue data")
+#### 阶段5：集成与优化 (第8周)
+1. **cmd/issue2md** - 主程序入口点
+2. **Makefile** - 构建和测试脚本
+3. **集成测试** - 端到端测试
+4. **性能优化** - API限流和缓存
 
-    // Config 错误
-    ErrInvalidOutputPath = errors.New("invalid output file path")
-)
+### 6.2 TDD实施策略
 
-// Wrap 包装错误并添加上下文
-func Wrap(err error, message string) error {
-    if err == nil {
-        return nil
-    }
-    return fmt.Errorf("%s: %w", message, err)
-}
-```
+#### 6.2.1 测试优先级
+1. **单元测试** - 每个包独立测试 (90%+覆盖率)
+2. **集成测试** - 真实GitHub API调用测试
+3. **端到端测试** - 完整CLI命令测试
 
-### 7.2 退出码约定
+#### 6.2.2 测试数据管理
+- 使用GitHub的公开测试仓库
+- 创建标准测试数据集
+- 支持Mock API用于CI/CD
 
-| 退出码 | 含义 | 示例场景 |
-|-------|------|---------|
-| 0 | 成功 | 正常完成转换 |
-| 1 | 一般错误 | 无效URL、网络错误 |
-| 2 | API错误 | 资源不存在、认证失败 |
-| 3 | 文件错误 | 无法写入输出文件 |
+### 6.3 质量保证措施
 
----
+#### 6.3.1 代码质量
+- 使用`golangci-lint`进行静态检查
+- 严格遵循Go官方代码规范
+- 100%类型安全的接口设计
 
-## 8. 测试策略
-
-### 8.1 测试金字塔
-
-```
-        ┌─────────────┐
-        │  E2E Tests  │  10% - 完整流程测试
-        ├─────────────┤
-        │ Integration │  30% - API交互测试
-        │    Tests    │
-        ├─────────────┤
-        │  Unit Tests │  60% - 表格驱动测试
-        └─────────────┘
-```
-
-### 8.2 表格驱动测试模板
-
-```go
-// internal/parser/parser_test.go
-
-func TestParseURL(t *testing.T) {
-    tests := []struct {
-        name    string
-        url     string
-        want    *ParseResult
-        wantErr error
-    }{
-        {
-            name: "valid issue url",
-            url:  "https://github.com/golang/go/issues/12345",
-            want: &ParseResult{
-                Type:   TypeIssue,
-                Owner:  "golang",
-                Repo:   "go",
-                Number: 12345,
-                URL:    "https://github.com/golang/go/issues/12345",
-            },
-            wantErr: nil,
-        },
-        {
-            name:    "invalid url",
-            url:     "not-a-url",
-            want:    nil,
-            wantErr: ErrInvalidURL,
-        },
-        // ... 更多测试用例
-    }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            got, err := ParseURL(tt.url)
-            if tt.wantErr != nil {
-                if !errors.Is(err, tt.wantErr) {
-                    t.Errorf("ParseURL() error = %v, wantErr %v", err, tt.wantErr)
-                }
-                return
-            }
-            if err != nil {
-                t.Fatalf("ParseURL() unexpected error: %v", err)
-            }
-            if !reflect.DeepEqual(got, tt.want) {
-                t.Errorf("ParseURL() = %v, want %v", got, tt.want)
-            }
-        })
-    }
-}
-```
-
-### 8.3 测试覆盖目标
-
-| 包 | 目标覆盖率 | 重点测试内容 |
-|---|-----------|-------------|
-| parser | 90%+ | URL解析边界情况 |
-| github | 80%+ | API响应解析、错误处理 |
-| converter | 90%+ | Markdown格式、YAML生成 |
-| config | 80%+ | 环境变量读取 |
-| cli | 70%+ | 命令行解析、流程编排 |
+#### 6.3.2 性能要求
+- API请求响应时间 < 5秒
+- 内存使用峰值 < 50MB
+- 支持GitHub API限流自动重试
 
 ---
 
-## 9. 实现路线图
+## 7. 关键技术决策与理由
 
-### Phase 1: 核心基础 (Week 1)
-- [ ] 搭建项目结构
-- [ ] 实现 `internal/parser` 包
-- [ ] 实现 `internal/config` 包
-- [ ] 编写 parser 和 config 的表格驱动测试
+### 7.1 使用GraphQL而非REST API
 
-### Phase 2: GitHub集成 (Week 2)
-- [ ] 实现 `internal/github` 包
-- [ ] 添加 `google/go-github` 依赖
-- [ ] 定义 GraphQL 查询
-- [ ] 编写集成测试（使用真实API）
+**决策**: 使用GitHub GraphQL API v4获取数据
 
-### Phase 3: Markdown转换 (Week 3)
-- [ ] 实现 `internal/converter` 包
-- [ ] YAML frontmatter 生成
-- [ ] 评论格式化和排序
-- [ ] Reactions 和用户链接支持
+**理由**:
+- 单次请求获取所有需要的数据，减少API调用次数
+- 更好的性能和更低的延迟
+- 精确获取所需字段，减少数据传输量
+- 更好的类型安全性
 
-### Phase 4: CLI和集成 (Week 4)
-- [ ] 实现 `internal/cli` 包
-- [ ] 实现入口 `cmd/issue2md/main.go`
-- [ ] 端到端测试
-- [ ] 文档编写
+### 7.2 标准库优先策略
 
----
+**决策**: 严格使用Go标准库，避免引入额外Web框架
 
-## 10. 验收检查清单
+**理由**:
+- 符合项目宪法"简单性原则"
+- 减少外部依赖和潜在的安全风险
+- 提高代码可维护性和理解性
+- 降低学习成本
 
-### 功能验收
-- [ ] 支持三种URL类型解析
-- [ ] 正确获取Issue/PR/Discussion数据
-- [ ] Markdown输出符合spec格式
-- [ ] YAML frontmatter完整
-- [ ] Reactions可选输出
-- [ ] 用户链接可选输出
-- [ ] 支持stdout和文件输出
-- [ ] GITHUB_TOKEN环境变量支持
+### 7.3 表格驱动测试优先
 
-### 质量验收
-- [ ] 所有测试通过 (`make test`)
-- [ ] 测试覆盖率 >= 80%
-- [ ] 无`go vet`警告
-- [ ] 无`golangci-lint`问题
-- [ ] 符合宪法所有条款
+**决策**: 所有单元测试采用表格驱动测试模式
 
-### 文档验收
-- [ ] README.md 使用说明
-- [ ] Godoc注释完整
-- [ ] 示例输出文档
+**理由**:
+- 提高测试用例的可读性和维护性
+- 便于添加新的测试场景
+- 减少重复代码，提高测试质量
+- 符合Go社区最佳实践
 
 ---
 
-**文档版本历史:**
-- v1.0 (2024-01-19): 初始版本，基于spec.md和constitution.md创建
+## 8. 风险评估与缓解策略
+
+### 8.1 技术风险
+
+| 风险 | 概率 | 影响 | 缓解措施 |
+|------|------|------|----------|
+| GitHub API限流 | 中 | 中 | 实现指数退避重试，支持Token认证 |
+| GraphQL查询复杂度 | 低 | 中 | 从简单查询开始，逐步优化 |
+| 私有仓库访问 | 中 | 低 | 明确文档说明，提供Token配置指导 |
+
+### 8.2 项目风险
+
+| 风险 | 概率 | 影响 | 缓解措施 |
+|------|------|------|----------|
+| 功能范围蔓延 | 中 | 高 | 严格遵循spec.md，避免镀金 |
+| 测试覆盖不足 | 低 | 中 | TDD开发，自动化覆盖率检查 |
+| 性能不达标 | 低 | 中 | 早期性能测试，渐进优化 |
+
+---
+
+## 9. 成功标准
+
+### 9.1 功能完整性
+- ✅ 支持Issue、PR、Discussion三种类型URL解析
+- ✅ 完整实现spec.md中定义的所有功能
+- ✅ 命令行接口完全符合设计规范
+
+### 9.2 质量标准
+- ✅ 单元测试覆盖率 >= 90%
+- ✅ 所有静态检查通过
+- ✅ 零已知安全漏洞
+
+### 9.3 性能标准
+- ✅ 单个资源处理时间 < 5秒
+- ✅ 内存使用峰值 < 50MB
+- ✅ 成功处理所有验收测试用例
+
+### 9.4 可维护性
+- ✅ 代码结构清晰，包职责明确
+- ✅ 完整的API文档和使用示例
+- ✅ 符合Go语言最佳实践
+
+---
+
+**下一步**: 开始实施阶段1，从`internal/parser`包开始，遵循TDD方法逐步实现各个模块。
